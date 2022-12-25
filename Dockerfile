@@ -82,6 +82,3 @@ COPY . .
 # https://deno.land/x/puppeteer@9.0.2#installation
 # In your real script, replace the installation script with https://deno.land/x/puppeteer@9.0.2/install.ts
 RUN PUPPETEER_PRODUCT=chrome deno run -A --unstable ./install.ts
-
-ENTRYPOINT ["deno"]
-CMD ["run", "-A", "--no-check", "--unstable", "./examples/docker.js"]

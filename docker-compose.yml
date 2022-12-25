@@ -1,0 +1,7 @@
+version: '2'
+services:
+  web:
+    image: deno-p
+    volumes:
+      - ./recast:/root/recast
+    command: ["deno", "run", "-A", "--no-check", "--unstable", "./recast/index.ts"]
