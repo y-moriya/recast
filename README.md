@@ -1,7 +1,8 @@
-# usage
+# Usage
 
 ```bash
-docker build --name deno-p .
+docker build -t deno-p .
 docker compose build
-docker compose up
+docker compose up -d
+./run.bat
 ```
