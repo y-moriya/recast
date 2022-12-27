@@ -10,6 +10,9 @@ create table conditions (
     active  boolean
 );
 
+insert into conditions (domain, board, keyword, active) values ('eagle', 'livejupiter', '博衣こより', true);
+insert into conditions (domain, board, keyword, active) values ('rio2016', 'jasmine', 'hololive有実況スレ', true);
+
 create table threads (
     id              varchar(40) PRIMARY KEY,
     active          boolean,
@@ -28,3 +31,9 @@ create table messages (
     mes         text,
     PRIMARY KEY (num, thread_id)
 );
+
+create role api_user nologin;
+grant usage on schema public to api_user;
+grant all on public.conditions to api_user;
+grant all on public.threads to api_user;
+grant all on public.messages to api_user;
