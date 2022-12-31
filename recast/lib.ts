@@ -1,6 +1,7 @@
 import { Page } from "../mod.ts";
 import { Condition, Message, Thread } from "./type.ts";
 import { getText, isActiveTargetThread } from "./util.ts";
+import { Logger } from "./logger.ts";
 
 export async function isArchivedThread(page: Page, thread: Thread, condition: Condition) : Promise<boolean> {
     const url = buildThreadUrlForNewMessage(thread, condition);
@@ -55,7 +56,7 @@ export async function getMessagesSp(page: Page, thread: Thread, condition: Condi
         const regex = /(\d+)\s([^\(]+)\(([^\)]+)\)\s(.+)$/;
         const match = info.match(regex);
         if (!match) {
-            console.log('not matched: ', info);
+            Logger.info('not matched: ', info);
             continue;
         }
         const num = parseInt(match[1]);

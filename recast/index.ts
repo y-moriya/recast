@@ -3,36 +3,9 @@ import { delay } from "https://deno.land/std@0.170.0/async/mod.ts"
 import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts"
 import { getActiveConditions, getActiveThreads, inactivateThread, upsertMessages, upsertThread } from "./db.ts";
 import { getActiveThreadsFromWeb, getMessages, getMessagesSp, isArchivedThread } from "./lib.ts";
-import * as log from "https://deno.land/std/log/mod.ts";
-import { LogRecord } from "https://deno.land/std/log/mod.ts";
+import { Logger } from "./logger.ts";
 
-await log.setup({
-  //define handlers
-  handlers: {
-      console: new log.handlers.ConsoleHandler("DEBUG", {
-          formatter: (logRecord: LogRecord) => {
-            const { datetime, levelName, msg } = logRecord;
-
-            const d = new Date(datetime.getTime() + 540 * 6e4);
-            const logTime = d.toISOString();
-            return `${logTime} ${levelName} ${msg}`;
-          },
-          
-      })
-  },
-
-  //assign handlers to loggers  
-  loggers: {
-      default: {
-          level: "DEBUG",
-          handlers: ["console"],
-      }
-  },
-});
-
-const clog = log.getLogger();
-
-clog.info('start');
+Logger.info('start');
 
 const client = new Client({
   user: "postgres",
@@ -44,11 +17,11 @@ const client = new Client({
 try {
   await client.connect();
 } catch (error) {
-  clog.error(error);
+  Logger.error(error);
   Deno.exit();
 }
 
-clog.info('database connection succeeded.');
+Logger.info('database connection succeeded.');
 
 let browser = await puppeteer.launch({
   args: [
@@ -57,7 +30,7 @@ let browser = await puppeteer.launch({
   ],
 });
 
-clog.info('browser launched.');
+Logger.info('browser launched.');
 
 while (true) {
   const page = await browser.newPage();
@@ -70,57 +43,57 @@ while (true) {
       if (actives.length === 0) {
         const web_threads = await getActiveThreadsFromWeb(page, condition);
         for (const t of web_threads) {
-          clog.info(`new thread: ${t.title}`);
+          Logger.info(`new thread: ${t.title}`);
           await upsertThread(client, t);
         }
         actives = web_threads;
       }
       
       for (const thread of actives) {
-        clog.info(`start getMessages: ${thread.title}`);
+        Logger.info(`start getMessages: ${thread.title}`);
         const messages = [];
         try {
           messages.push(...await getMessages(page, thread, condition));
           // messages.push(...await getMessagesSp(page, thread, condition));
         } catch (error) {
-          clog.error(error);
+          Logger.error(error);
           await browser.close();
           await client.end();
-          clog.info('end');
+          Logger.info('end');
           Deno.exit(1);
         }
 
         if (messages.length === 0) {
-          clog.error('no messages found.');
+          Logger.error('no messages found.');
           await delay(8000);
           continue;
         }
 
         const nums = messages.map(m => m.num);
         const max = Math.max(...nums);
-        clog.info(`${max - thread.count} messages found.`);
+        Logger.info(`${max - thread.count} messages found.`);
         thread.count = max;
         await upsertThread(client, thread);
         await upsertMessages(client, messages);
         if (max > 1000 || await isArchivedThread(page, thread, condition)) {
-          clog.info(`inactivated: ${thread.title}`);
+          Logger.info(`inactivated: ${thread.title}`);
           await inactivateThread(client, thread);
         }
       }
     }
     await page.close({ runBeforeUnload: true });
   } catch (error) {
-    clog.error(error);
-    clog.info('timeout. relaunch browser...');
+    Logger.error(error);
+    Logger.info('timeout. relaunch browser...');
     await browser.close();
-    clog.info('browser closed.');
+    Logger.info('browser closed.');
     browser = await puppeteer.launch({
       args: [
         "--no-sandbox",
         "--disable-dev-shm-usage",
       ],
     });
-    clog.info('browser relaunched.');
+    Logger.info('browser relaunched.');
   }
 }
 
@@ -128,4 +101,4 @@ await browser.close();
 
 await client.end();
 
-clog.info('end');
+Logger.info('end');
