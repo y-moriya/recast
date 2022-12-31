@@ -18,6 +18,7 @@ export interface Thread {
 export interface Message {
     num: number,
     thread_id: string,
+    condition_id: number,
     name: string,
     date: string,
     uid: string,

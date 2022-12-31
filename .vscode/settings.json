@@ -1,5 +1,8 @@
 {
   "deno.enable": true,
   "deno.lint": false,
-  "deno.unstable": true
+  "deno.unstable": true,
+  "cSpell.words": [
+    "stopred"
+  ]
 }

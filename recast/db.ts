@@ -21,10 +21,10 @@ export async function getActiveThreads(client: Client, condition_id: number) : P
 export async function upsertMessages(client: Client, messages: Message[]) {
     for (const mes of messages) {
         const result = await client.queryArray(
-            `insert into messages (num, thread_id, name, date, uid, mes) values ($1, $2, $3, $4, $5, $6)
+            `insert into messages (num, thread_id, condition_id, name, date, uid, mes) values ($1, $2, $3, $4, $5, $6, $7)
             on conflict (num, thread_id) do nothing
             `,
-            [mes.num, mes.thread_id, mes.name, mes.date, mes.uid, mes.mes]
+            [mes.num, mes.thread_id, mes.condition_id, mes.name, mes.date, mes.uid, mes.mes]
         );
     }
 }

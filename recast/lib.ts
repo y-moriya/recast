@@ -2,15 +2,28 @@ import { Page } from "../mod.ts";
 import { Condition, Message, Thread } from "./type.ts";
 import { getText, isActiveTargetThread } from "./util.ts";
 
-export async function getMessages(page: Page, thread: Thread, condition: Condition) : Promise<Message[]> {
+export async function isArchivedThread(page: Page, thread: Thread, condition: Condition) : Promise<boolean> {
     const url = buildThreadUrlForNewMessage(thread, condition);
 
     await page.goto(url);
+    const stopred = await page.$('div.stopred');
+
+    return stopred ? true : false;
+}
+
+export async function getMessages(page: Page, thread: Thread, condition: Condition) : Promise<Message[]> {
+    const url = buildThreadUrlForNewMessage(thread, condition);
+
+    const res = await page.goto(url);
+    if (res?.status() === 410) {
+        throw new Error("Gone.");
+    }
+
     const messages: Message[] = [];
     const posts = await page.$$('.post');
     for (const post of posts) {
         const numElement = await post.$('.number');
-        const num = await getText(numElement);
+        const num = parseInt(await getText(numElement));
         const nameElement = await post.$('.name');
         const name = await getText(nameElement);
         const dateElement = await post.$('.date');
@@ -20,8 +33,42 @@ export async function getMessages(page: Page, thread: Thread, condition: Conditi
         const mesElement = await post.$('.message');
         const mesHandler = await mesElement?.getProperty('innerHTML');
         const mes = await mesHandler?.jsonValue();
-        messages.push({ num: parseInt(num), thread_id: thread.id, name: name, date: date, uid: uid, mes: mes });
+        
+        messages.push({ num: num, thread_id: thread.id, condition_id: condition.id, name: name, date: date, uid: uid, mes: mes });
     }
+    return messages;
+}
+
+export async function getMessagesSp(page: Page, thread: Thread, condition: Condition) : Promise<Message[]> {
+    const url = buildThreadUrlForNewMessage(thread, condition);
+
+    const res = await page.goto(url);
+    if (res?.status() === 410) {
+        throw new Error("Gone.");
+    }
+
+    const messages: Message[] = [];
+    const posts = await page.$$('#thread li.threadview_response:not(.res_ad)');
+    for (const post of posts) {
+        const infoElement = await post.$('.threadview_response_info');
+        const info = await getText(infoElement);
+        const regex = /(\d+)\s([^\(]+)\(([^\)]+)\)\s(.+)$/;
+        const match = info.match(regex);
+        if (!match) {
+            console.log('not matched: ', info);
+            continue;
+        }
+        const num = parseInt(match[1]);
+        const name = match[2];
+        const uid = match[3];
+        const date = match[4];
+
+        const mesElement = await post.$('.threadview_response_body');
+        const mes = await getText(mesElement);
+
+        messages.push({ num: num, thread_id: thread.id, condition_id: condition.id, name: name, date: date, uid: uid, mes: mes });
+    }
+
     return messages;
 }
 

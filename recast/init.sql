@@ -1,6 +1,6 @@
-drop table if exists conditions;
-drop table if exists messages;
-drop table if exists threads;
+drop table if exists conditions cascade;
+drop table if exists messages cascade;
+drop table if exists threads cascade;
 
 create table conditions (
     id      serial PRIMARY KEY,
@@ -23,12 +23,13 @@ create table threads (
 );
 
 create table messages (
-    num         integer,
-    thread_id   varchar(40) references threads(id),
-    name        text,
-    date        text,
-    uid         varchar(40),
-    mes         text,
+    num          integer,
+    thread_id    varchar(40) references threads(id),
+    condition_id int references conditions(id),
+    name         text,
+    date         text,
+    uid          varchar(40),
+    mes          text,
     PRIMARY KEY (num, thread_id)
 );
 

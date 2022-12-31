@@ -2,7 +2,7 @@ import puppeteer from "../mod.ts";
 import { delay } from "https://deno.land/std@0.170.0/async/mod.ts"
 import { Client } from "https://deno.land/x/postgres@v0.17.0/mod.ts"
 import { getActiveConditions, getActiveThreads, inactivateThread, upsertMessages, upsertThread } from "./db.ts";
-import { getActiveThreadsFromWeb, getMessages } from "./lib.ts";
+import { getActiveThreadsFromWeb, getMessages, getMessagesSp, isArchivedThread } from "./lib.ts";
 import * as log from "https://deno.land/std/log/mod.ts";
 import { LogRecord } from "https://deno.land/std/log/mod.ts";
 
@@ -78,25 +78,40 @@ while (true) {
       
       for (const thread of actives) {
         clog.info(`start getMessages: ${thread.title}`);
-        const messages = await getMessages(page, thread, condition);
-        const max_count = messages[messages.length-1].num
-        clog.info(`${max_count - thread.count} messages found.`);
-        thread.count = max_count;
+        const messages = [];
+        try {
+          messages.push(...await getMessages(page, thread, condition));
+          // messages.push(...await getMessagesSp(page, thread, condition));
+        } catch (error) {
+          clog.error(error);
+          await browser.close();
+          await client.end();
+          clog.info('end');
+          Deno.exit(1);
+        }
+
+        if (messages.length === 0) {
+          clog.error('no messages found.');
+          await delay(8000);
+          continue;
+        }
+
+        const nums = messages.map(m => m.num);
+        const max = Math.max(...nums);
+        clog.info(`${max - thread.count} messages found.`);
+        thread.count = max;
         await upsertThread(client, thread);
         await upsertMessages(client, messages);
-        if (max_count > 1000) {
+        if (max > 1000 || await isArchivedThread(page, thread, condition)) {
           clog.info(`inactivated: ${thread.title}`);
           await inactivateThread(client, thread);
         }
-        // await delay(8000 / actives.length);
       }
     }
     await page.close({ runBeforeUnload: true });
   } catch (error) {
     clog.error(error);
     clog.info('timeout. relaunch browser...');
-    // await page.close({ runBeforeUnload: true });
-    // clog.info('page closed.');
     await browser.close();
     clog.info('browser closed.');
     browser = await puppeteer.launch({
